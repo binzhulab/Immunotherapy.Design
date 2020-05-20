@@ -1,11 +1,11 @@
 Package: Immunotherapy.Design
 Title: Study design for immunotherapy clinical trials
-Version: 1.0.0
-Date: 2019-05-01
-Author: Zhenzhen Xu <Zhenzhen.Xu@fda.hhs.gov> and Bin Zhu <bin.zhu@nih.gov>
-Description: Estimate hazard rates and baseline hazards using an EM algorithm.
+Version: 1.1.0
+Date: 2020-05-18
+Author: Zhenzhen Xu <Zhenzhen.Xu@fda.hhs.gov>, Yongsoek Park <yongpark@pitt.edu> and Bin Zhu <bin.zhu@nih.gov>
+Description: Perform sample size, power calculation and subsequent analysis for Immuno-oncology (IO) trials composed of responders and nonresponders.
 Maintainer: Bill Wheeler <wheelerb@imsweb.com>
 Depends: survival, msm
 License: GPL-2
 NeedsCompilation: yes
-Packaged: 2019-05-01 13:19:29 UTC; wheelerwi
+Packaged: 2020-05-18 18:13:18 UTC; wheelerwi

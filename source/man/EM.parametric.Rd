@@ -7,7 +7,7 @@
 }
 \usage{ Pembedded.EM.P(data, time.var="X", trt.var="trt", status.var="event_status",
            effect_p=0.6, t1=1, probResponder=NULL, 
-           stopTol=1e-5, maxiter=10000, print=0)
+           stopTol=1e-5, maxiter=100000, print=0)
 }
 \arguments{
   \item{data}{Data frame or matrix containing a time-to-event variable (\code{time.var}),
@@ -25,7 +25,7 @@
                        The default is NULL so that the initial probability is 0.5 for
                        treated subjects.}
   \item{stopTol}{Stopping tolerance. The default is 1e-5.}
-  \item{maxiter}{Maximum number of iterations. The default is 10000.}
+  \item{maxiter}{Maximum number of iterations. The default is 100000.}
   \item{print}{0-2 to print information. Larger values will print more information.
                The default is 0.}
 }
@@ -36,15 +36,16 @@
   \tabular{ll}{
     Name          \tab Description \cr
     converged     \tab TRUE if EM algorithm converged \cr
-    lambda        \tab estimated hazard rate \cr
+    lambda        \tab estimated hazard ratio of responders versus controls \cr
     baseline      \tab estimated baseline hazard \cr
-    probResponder \tab estimated probability of a treated subject being a responder
+    probResponder \tab estimated probability of a treated subject being a responder \cr
+    loglike       \tab log-likelihood value at the final estimates
   }
 }
 \references{
 }
 \author{
-Zhenzhen Xu <Zhenzhen.Xu@fda.hhs.gov> and Bin Zhu <bin.zhu@nih.gov>
+Zhenzhen Xu <Zhenzhen.Xu@fda.hhs.gov>, Yongsoek Park <yongpark@pitt.edu> and Bin Zhu <bin.zhu@nih.gov>
 }
 \examples{
   data(data, package="Immunotherapy.Design")
@@ -52,4 +53,4 @@ Zhenzhen Xu <Zhenzhen.Xu@fda.hhs.gov> and Bin Zhu <bin.zhu@nih.gov>
   ret$lambda
 }
 \keyword{ EM, survival } 
-\seealso{ \code{\link{Pembedded.EM.NP}} }
+\seealso{ \code{\link{PRIME.EM}} }

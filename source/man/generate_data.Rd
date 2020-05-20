@@ -12,10 +12,10 @@ generate_data(nmax=500, rand_ratio=0.5, effect_p=0.6, enroll_rate=380*0.25/6,
 \arguments{
   \item{nmax}{Sample size}
   \item{rand_ratio}{Allocation ratio}
-  \item{effect_p}{Proportion of responders in the treatment arm}
+  \item{effect_p}{Proportion of responders in the treatment arm at baseline}
   \item{enroll_rate}{Enrollment rate in subjects per month}
   \item{lambda1}{Baseline hazard in terms of months} 
-  \item{HR}{Hazard ratio}
+  \item{HR}{Hazard ratio of responders against controls}
   \item{tau}{Total study duration}
   \item{t1}{Delayed duration}
 }
@@ -39,7 +39,7 @@ generate_data(nmax=500, rand_ratio=0.5, effect_p=0.6, enroll_rate=380*0.25/6,
 \references{
 }
 \author{
-Zhenzhen Xu <Zhenzhen.Xu@fda.hhs.gov> and Bin Zhu <bin.zhu@nih.gov>
+Zhenzhen Xu <Zhenzhen.Xu@fda.hhs.gov>, Yongsoek Park <yongpark@pitt.edu> and Bin Zhu <bin.zhu@nih.gov>
 }
 \examples{
   data <- generate_data()

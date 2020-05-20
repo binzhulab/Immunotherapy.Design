@@ -28,4 +28,4 @@ Zhenzhen Xu <Zhenzhen.Xu@fda.hhs.gov> and Bin Zhu <bin.zhu@nih.gov>
   lambda0[1:10]
 }
 \keyword{ EM, survival } 
-\seealso{ \code{\link{Pembedded.EM.NP}} }
+\seealso{ \code{\link{PRIME.EM}} }

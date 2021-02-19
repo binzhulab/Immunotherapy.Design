@@ -1,0 +1,3 @@
+20210218:
+  * Fix: Return loglike value from C.
+  * Maximizing log observed-data likelihood for "trt[i]=1".

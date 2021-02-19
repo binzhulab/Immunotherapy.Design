@@ -1,32 +1,5 @@
 #include "./source.h"
 
-static double loglik_p(n, X, Zt, exst1, nevents, xt1, xt12, trt1LogEffect, 
-             trt1Log1mEffect, lambda, h_nr)
-int n, nevents, *exst1;
-double *X, *Zt, *xt1, *xt12, *trt1LogEffect, *trt1Log1mEffect, lambda, h_nr;
-{
-  int i;
-  double ret, r1=0.0, r2, r3=0.0, r4=0.0, r5=0.0, r6=0.0, r7=0.0, Zti, oneMinusZti;
-
-  r2 = (double) nevents;
-  
-  for (i=0; i<n; i++) {
-    Zti         = Zt[i];
-    oneMinusZti = 1.0 - Zti;
-    r1 += Zti*exst1[i];
-    r3 += Zti*xt1[i];
-    r4 += Zti*xt12[i];
-    r5 += oneMinusZti*X[i];
-    r6 += Zti*trt1LogEffect[i];
-    r7 += oneMinusZti*trt1Log1mEffect[i];
-  }
-
-  ret = r1*log(lambda) + r2*log(h_nr) - h_nr*(r3 + lambda*r4 + r5) + r6 + r7;
-
-  return(ret);
-
-} /* END: loglik_p */
-
 static void EM_setupObjP(n, X, eventStatus, t1, xt1, xt12, exst1, Xminust1, nevents)
 int n, *eventStatus, *exst1, *nevents;
 double *X, t1, *xt1, *xt12, *Xminust1;
@@ -90,30 +63,28 @@ double *ret;
 } /* END: EM_setupTrtP */
 
 static double loglik_p_new(n, X, Zt, exst1, nevents, xt1, xt12, trt1LogEffect, 
-             trt1Log1mEffect, lambda, h_nr, trt)
+             trt1Log1mEffect, lambda, h_nr, trt, log_Wt)
 int n, nevents, *exst1, *trt;
 double *X, *Zt, *xt1, *xt12, *trt1LogEffect, *trt1Log1mEffect, lambda, h_nr;
+double *log_Wt;
 {
   int i;
   double ret, r1=0.0, r2, r3=0.0, r4=0.0, r5=0.0, r6=0.0, r7=0.0, Zti, oneMinusZti;
-
-  r2 = (double) nevents;
+  double r5_trt0=0.0;
 
   for (i=0; i<n; i++) { 
-    Zti         = Zt[i];
-    oneMinusZti = 1.0 - Zti;
     if (trt[i]) {
-      r1 += Zti*exst1[i];
-      r3 += Zti*xt1[i];
-      r4 += Zti*xt12[i];
-      r6 += Zti*trt1LogEffect[i];
-      r7 += oneMinusZti*trt1Log1mEffect[i];
+      r1 += log_Wt[i];
+    } else {
+      r5 += X[i];
     }
-    r5 += oneMinusZti*X[i];
-    
   }
 
-  ret = r1*log(lambda) + r2*log(h_nr) - h_nr*(r3 + lambda*r4 + r5) + r6 + r7;
+  /* The complete-data likelihood is only correct for control. */
+  // ret = r1*log(lambda) + r2*log(h_nr) - h_nr*(r3 + lambda*r4 + r5) + r6 + r7;
+
+  /* This is the full logL because status of responder is unknown. */
+  ret = r1 - h_nr * r5;
 
   return(ret);
 
@@ -143,9 +114,10 @@ double logEff, log1mEff, *trt1LogEffect, *trt1Log1mEffect;
 } /* END: EM_setupTrtP_new */
 
 static void updateZt(nTrtEq1, trtEq1Rows, X, eventStatus, lambda, h_nr, t1, 
-                     Xminust1, effect_p, oneMinusEffect, Zt)
+                     Xminust1, effect_p, oneMinusEffect, Zt, log_Wt)
 int nTrtEq1, *trtEq1Rows, *eventStatus;
 double *X, lambda, h_nr, t1, *Xminust1, effect_p, oneMinusEffect, *Zt;
+double *log_Wt;
 {
   int i, row, evi;
   double Xi, dtmp, vec, vec2, pdfr, pdfnr;
@@ -172,6 +144,7 @@ double *X, lambda, h_nr, t1, *Xminust1, effect_p, oneMinusEffect, *Zt;
      pdfnr   = vec;
      vec     = effect_p*pdfr;
      Zt[row] = vec/(vec + oneMinusEffect*pdfnr);
+     log_Wt[row] = log(vec + oneMinusEffect*pdfnr); // See APECM or APECMa
   }
 }
 
@@ -216,6 +189,9 @@ double *X, *xt1, *xt12, effect_p, *trt1LogEffect, *trt1Log1mEffect, stopTol, *Zt
   double dtmp, r1, r3, r2, h_nr, oneMinusEffect;
   double loglik, loglik0=-1.0, lambda=0.0, lambda0, diff;
 
+  double *log_Wt;
+  log_Wt = dVec_alloc(n, 0, 0.0);
+
   r2             = (double) nevents;
   oneMinusEffect = 1.0 - effect_p;
   lambdaFlag     = (LAMBDA_OBS  > DBL_NOTMISS_GT) && (method == 1); 
@@ -223,7 +199,7 @@ double *X, *xt1, *xt12, effect_p, *trt1LogEffect, *trt1Log1mEffect, stopTol, *Zt
   /* Get good initial estimates for permutation tests */
   if (LAMBDA_OBS  > DBL_NOTMISS_GT) {  
     updateZt(nTrtEq1, trtEq1Rows, X, eventStatus, LAMBDA_OBS, *ret_h_nr, t1, 
-                     Xminust1, effect_p, oneMinusEffect, Zt);
+                     Xminust1, effect_p, oneMinusEffect, Zt, log_Wt);
   }
 
   /* Zt must be 0 for trt = 0 */
@@ -231,11 +207,11 @@ double *X, *xt1, *xt12, effect_p, *trt1LogEffect, *trt1Log1mEffect, stopTol, *Zt
     iter++;
     lambda = updateLambda(n, Zt, trt, exst1, xt1, xt12, X, r2, &h_nr);
     updateZt(nTrtEq1, trtEq1Rows, X, eventStatus, lambda, h_nr, t1, 
-                     Xminust1, effect_p, oneMinusEffect, Zt);
+                     Xminust1, effect_p, oneMinusEffect, Zt, log_Wt);
 
 #if EM_STOP_CRITERIA == 0
     loglik = loglik_p_new(n, X, Zt, exst1, nevents, xt1, xt12, trt1LogEffect, 
-             trt1Log1mEffect, lambda, h_nr, trt);
+             trt1Log1mEffect, lambda, h_nr, trt, log_Wt);
     if (!R_FINITE(loglik)) error("ERROR: non-finite value for log-likelihood");
 #endif
 
@@ -249,7 +225,7 @@ double *X, *xt1, *xt12, effect_p, *trt1LogEffect, *trt1Log1mEffect, stopTol, *Zt
         conv = 1;
 #if EM_STOP_CRITERIA == 0
         *ret_loglike = loglik_p_new(n, X, Zt, exst1, nevents, xt1, xt12, trt1LogEffect, 
-             trt1Log1mEffect, lambda, h_nr, trt);
+             trt1Log1mEffect, lambda, h_nr, trt, log_Wt);
 #endif
         break;
       }
@@ -286,13 +262,13 @@ double *X, *xt1, *xt12, effect_p, *trt1LogEffect, *trt1Log1mEffect, stopTol, *Zt
     if (print > 1) {
       if (iter > 1) {
 #if EMSTOP_CRITERIA == 0
-        Rprintf("Iter=%d, loglike=%11.4f, diff=%g\n", iter, loglik, diff);
+        Rprintf("Iter=%d, lambda=%g, loglike=%11.4f, diff=%g\n", iter, lambda, loglik, diff);
 #else
         Rprintf("Iter=%d, lambda=%g, diff=%g\n", iter, lambda, diff);
 #endif
       } else {
 #if EMSTOP_CRITERIA == 0
-        Rprintf("Iter=%d, loglike=%11.4f\n", iter, loglik);
+        Rprintf("Iter=%d, lambda=%g, loglike=%11.4f\n", iter, lambda, loglik);
 #else
         Rprintf("Iter=%d, lambda=%g\n", iter, lambda);
 #endif
@@ -316,6 +292,7 @@ double *X, *xt1, *xt12, effect_p, *trt1LogEffect, *trt1Log1mEffect, stopTol, *Zt
   *ret_h_nr   = h_nr;
   *ret_iter   = iter;
 
+  free(log_Wt);
   return(conv);
 
 } /* END: EM_loopP_new */
@@ -365,7 +342,7 @@ double *X, *Zt, effect_p, t1, stopTol, *ret_lambda, *ret_h_nr, *ret_loglike;
 
 } /* END: EM_mainP */
 
-void C_EM_mainP(pn, X, trt, eventStatus, peffect_p, pt1, pstopTol, pmaxiter, pprint, 
+void wcc_C_EM_mainP(pn, X, trt, eventStatus, peffect_p, pt1, pstopTol, pmaxiter, pprint, 
                     ret_conv, ret_lambda, ret_h_nr, Zt, ret_loglike)
 int *pn, *pprint, *pmaxiter, *trt, *eventStatus, *ret_conv;
 double *X, *Zt, *peffect_p, *pt1, *pstopTol, *ret_lambda, *ret_h_nr, *ret_loglike;
@@ -376,125 +353,5 @@ double *X, *Zt, *peffect_p, *pt1, *pstopTol, *ret_lambda, *ret_h_nr, *ret_loglik
 
   return;
 
-} /* END: C_EM_mainP */
-
-static int ReRandP_new(num_rand, n, X, trt, eventStatus, effect_p, t1, stopTol, 
-                       maxiter, print, alpha, method, ret_p, ret_lambda, ret_hnr)
-int num_rand, n, *trt, *eventStatus, maxiter, print, method;
-double *X, effect_p, t1, stopTol, *ret_p, alpha, *ret_lambda, *ret_hnr;
-{
-  double *Xminust1, *xt1, *xt12, *trt1LogEffect, *trt1Log1mEffect, logEff, log1mEff;
-  double *Zt, lambda, h_nr, minP, maxP, M, lambda_obs, h_nr_obs, alphaBndL, alphaBndU;
-  double LAMBDA_OBS, ret_loglike;
-  int iter, conv, nevents=0, *exst1, *trtPermute, sumNrand=0, sumGTobs=0;
-  int nTrtEq1, *trtEq1Rows, alphaFlag, retIter, totalIter=0;
-
-  *ret_p   = -1.0;
-  logEff   = log(effect_p);
-  log1mEff = log(1.0 - effect_p);
-
-  /* Number of treated subjects */
-  nTrtEq1   = sum_iVec(trt, n);
-  alphaFlag = (alpha > 0.0);
-  alphaBndL = alpha + 1.0/num_rand;
-  alphaBndU = alpha - 1.0/num_rand;
-
-  Xminust1        = dVec_alloc(n, 0, 0.0);
-  exst1           = iVec_alloc(n, 0, 0.0);
-  xt1             = dVec_alloc(n, 0, t1);
-  xt12            = dVec_alloc(n, 0, 0.0);
-  trt1LogEffect   = dVec_alloc(n, 0, 0.0);
-  trt1Log1mEffect = dVec_alloc(n, 0, 0.0);
-  trtPermute      = iVec_alloc(n, 0, 0.0);
-  Zt              = dVec_alloc(n, 1, 0.0); 
-  trtEq1Rows      = iVec_alloc(nTrtEq1, 0, 0);
-
-  /* Set up objects that do not depend on permuted trt */
-  EM_setupObjP(n, X, eventStatus, t1, xt1, xt12, exst1, Xminust1, &nevents);
-
-  /* Set up objects that depend on trt */
-  EM_setupTrtP_new(n, trt, logEff, log1mEff, trt1LogEffect, trt1Log1mEffect, trtEq1Rows);
-
-  /* Get observed lambda.
-     Initial Zt is used, h_nr and lambda get updated immediately.
-  */
-  setupZt(n, trt, Zt);
-  conv = EM_loopP_new(n, nevents, maxiter, eventStatus, exst1, X, xt1, xt12, 
-                    effect_p, trt1LogEffect, trt1Log1mEffect, stopTol, t1, print, 0, 
-                    trtEq1Rows, nTrtEq1, trt,
-                    Xminust1, &h_nr_obs, &lambda_obs, Zt, DBL_MISS, &retIter, &ret_loglike);
-  if (print) Rprintf("Observed lambda = %g\n", lambda_obs);
-  if (!conv) error("ERROR: EM algorithm did not converge for the observed data. Try increasing maxiter.");
-  *ret_lambda = lambda_obs;
-  *ret_hnr    = h_nr_obs;
-  LAMBDA_OBS  = lambda_obs;
-
-  print = 0;
-  for (iter=0; iter<num_rand; iter++) {
-    permute_iVec(trt, n, trtPermute);
-    setupZt(n, trtPermute, Zt);
-
-    /* Set up objects that depend on trt */
-    EM_setupTrtP_new(n, trtPermute, logEff, log1mEff, trt1LogEffect, trt1Log1mEffect, trtEq1Rows);
-
-    /* Set for each perm */
-    h_nr = h_nr_obs;
-    conv =  EM_loopP_new(n, nevents, maxiter, eventStatus, exst1, X, xt1, xt12, 
-                    effect_p, trt1LogEffect, trt1Log1mEffect, stopTol, t1, print, method,
-                    trtEq1Rows, nTrtEq1, trtPermute,
-                    Xminust1, &h_nr, &lambda, Zt, LAMBDA_OBS, &retIter, &ret_loglike);    
-
-    if (conv) {
-
-      /*totalIter += retIter;*/
-      sumNrand++;
-      if (lambda > lambda_obs) sumGTobs++;
-
-      /* Check to stop early. If alpha > 0, then we really only need to consider
-         pvalues <= alpha for power calculations. In this case, compute the 
-         smallest possible p-value based on the current number of randomizations. */
-      if (alphaFlag) {
-        M    = (double) (num_rand - iter - 1);
-        minP = 1.0 - ((M + sumGTobs)/(M + sumNrand));
-        maxP = 1.0 - (sumGTobs/(M + sumNrand));
-        if ((minP > alphaBndL) || (maxP < alphaBndU)) break;
-      }
-    }
-  }
-
-  if (sumNrand) *ret_p = 1.0 - ((double) sumGTobs)/((double) sumNrand);
-
-  free(Xminust1);
-  free(exst1);
-  free(xt1);
-  free(xt12);
-  free(trt1LogEffect);
-  free(trt1Log1mEffect);
-  free(trtPermute);
-  free(Zt);
-  free(trtEq1Rows);
-
-  return(sumNrand);
-
-} /* END: ReRandP_new */
-
-
-void C_ReRandP_new(pnum_rand, pn, X, trt, eventStatus, peffect_p, pt1, pstopTol, pmaxiter,
-               pprint, palpha, pmethod, ret_nrand, ret_p, ret_lambda, ret_hnr)
-int *pnum_rand, *pn, *trt, *eventStatus, *pmaxiter, *pprint, *ret_nrand, *pmethod;
-double *X, *peffect_p, *pt1, *pstopTol, *ret_p, *palpha, *ret_lambda, *ret_hnr;
-{
-
-  /* For random number generation */
-  GetRNGstate();
-
-  *ret_nrand = ReRandP_new(*pnum_rand, *pn, X, trt, eventStatus, *peffect_p, *pt1, 
-                       *pstopTol, *pmaxiter, *pprint, *palpha, *pmethod,
-                       ret_p, ret_lambda, ret_hnr);
-
-  PutRNGstate();  
-
-  return;
-
-} /* END: C_ReRandP_new */
+} /* END: wcc_C_EM_mainP */
 

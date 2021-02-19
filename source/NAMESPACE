@@ -9,3 +9,4 @@ export(N.PRIME.LRT, PRIME.EM, getHazard,
        Pow.Pembedded.P, N.Pembedded.P,
        Pow.PRIME.ReRandomizationTest, Pow.PRIME.LRT,
        PRIME.LRT)
+export(wcc.Pembedded.EM.P)

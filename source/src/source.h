@@ -7,6 +7,7 @@
             Apr 04 2020 In non-parametric EM, change to let stopping criteria
                         be on beta instead of log-likelihood   
             Apr 29 2020 Add LRT_NP function        
+	    Feb 17 2021 Propose a fix to use log observed data likelihood
 */
 
 #include <stdlib.h>
@@ -63,6 +64,8 @@ double sumLogdVec(double *, int);
 
 /* Parametric */
 void C_EM_mainP(int *, double *, int *, int *, double *, double *, double *,
+   int *, int *, int *, double *, double *, double *, double *);
+void wcc_C_EM_mainP(int *, double *, int *, int *, double *, double *, double *,
    int *, int *, int *, double *, double *, double *, double *);
 void C_ReRandP_new(int *, int *, double *, int *, int *, double *, double *,
    double *, int *, int *, double *, int *, int *, double *, double *, double *);
